@@ -1,0 +1,35 @@
+server:
+  port: 8084
+
+spring:
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: bg-jobs-consumer-group
+  datasource:
+    url: "jdbc:mysql://localhost:3306/capstone"
+    username: capstone
+    password: MyCapstonePassword
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+
+  # You can define your ES host for the new Java client
+elasticsearch:
+  host: "localhost"
+  port: 9200
+    # If secured, you'd have user/pw here or set them in a custom bean
+
+kafka:
+  topics:
+    jfc-bg-job-topic: jfc-bg-job-topic        # JFC -> background-jobs
+    job-acknowledgement-topic: job-acknowledgement-topic
+    partition-count: 1
+    replication-factor: 1
+
+logging:
+  level:
+    org.springframework.kafka: INFO
+    com.example.capstone: DEBUG
