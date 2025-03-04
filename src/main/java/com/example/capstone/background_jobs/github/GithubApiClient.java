@@ -2,6 +2,7 @@ package com.example.capstone.background_jobs.github;
 
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Map;
@@ -56,6 +57,9 @@ public class GithubApiClient {
 
             return resp.getStatusCode().is2xxSuccessful();
 
+        } catch (HttpClientErrorException.Conflict conflictEx) {
+            // 409 => already open => treat it as success
+            return true;
         } catch (Exception e) {
             e.printStackTrace();
             return false;
@@ -102,6 +106,9 @@ public class GithubApiClient {
 
             return resp.getStatusCode().is2xxSuccessful();
 
+        } catch (HttpClientErrorException.Conflict conflictEx) {
+            // 409 => already open => treat it as success
+            return true;
         } catch (Exception e) {
             e.printStackTrace();
             return false;
@@ -157,6 +164,9 @@ public class GithubApiClient {
 
             return resp.getStatusCode().is2xxSuccessful();
 
+        } catch (HttpClientErrorException.Conflict conflictEx) {
+            // 409 => already open => treat it as success
+            return true;
         } catch (Exception e) {
             e.printStackTrace();
             return false;

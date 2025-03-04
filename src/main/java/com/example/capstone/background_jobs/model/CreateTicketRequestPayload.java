@@ -7,6 +7,16 @@ public class CreateTicketRequestPayload {
     private String summary;
     private String description;
 
+    public CreateTicketRequestPayload(Long tenantId, String id, String summary, String desc) {
+        this.tenantId = tenantId;
+        this.findingId = id;
+        this.summary = summary;
+        this.description = desc;
+    }
+
+    public CreateTicketRequestPayload() {
+    }
+
     // Getters & Setters
     public Long getTenantId() {
         return tenantId;

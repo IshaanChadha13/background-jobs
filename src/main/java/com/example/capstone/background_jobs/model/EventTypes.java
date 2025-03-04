@@ -6,5 +6,6 @@ public enum EventTypes {
     SCAN_PARSE,
     UPDATE_FINDING,
     CREATE_TICKET,
-    TRANSITION_TICKET
+    TRANSITION_TICKET,
+    NEW_SCAN
 }

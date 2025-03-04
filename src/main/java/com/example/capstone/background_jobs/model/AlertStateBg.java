@@ -8,42 +8,6 @@ public enum AlertStateBg {
     FIXED,
     CONFIRM;
 
-    /**
-     * Takes a raw string (e.g. "open", "dismiss", "resolved"),
-     * normalizes, and returns the matching enum. Defaults to OPEN if unknown.
-     */
-    public static AlertStateBg fromRaw(String rawState) {
-        if (rawState == null || rawState.isEmpty()) {
-            return OPEN;
-        }
-        String lower = rawState.toLowerCase().replace("_", " ");
-
-        switch (lower) {
-            case "dismiss":
-            case "dismissed":
-                return SUPPRESSED;
-            case "false positive":
-            case "false_positive":
-            case "inaccurate":
-                return FALSE_POSITIVE;
-            case "fixed":
-            case "resolved":
-                return FIXED;
-            case "confirm":
-            case "acknowledged":
-                return CONFIRM;
-            case "open":
-            case "new":
-                return OPEN;
-            default:
-                return OPEN;
-        }
-    }
-
-    /**
-     * Advanced version if you also want to consider toolType and a dismissReason,
-     * just like the parser does.
-     */
     public static AlertStateBg fromRaw(String rawState, String toolType, String dismissedReason) {
         if (rawState == null || rawState.isEmpty()) {
             return OPEN;
@@ -68,7 +32,7 @@ public enum AlertStateBg {
             // If your code scanning / secret scanning logs "false positive" => map to FALSE_POSITIVE
             // otherwise => SUPPRESSED
             if ("CODE_SCANNING".equals(type) || "SECRET_SCANNING".equals(type) || "DEPENDABOT".equals(type)) {
-                if (reason.contains("false positive") || reason.contains("inaccurate")) {
+                if (reason.contains("false positive") || reason.contains("false_positive") || reason.contains("inaccurate")) {
                     return FALSE_POSITIVE;
                 } else {
                     return SUPPRESSED;
@@ -76,6 +40,10 @@ public enum AlertStateBg {
             }
             // fallback if unknown => SUPPRESSED
             return SUPPRESSED;
+        }
+
+        if("false positive".equals(lowerState) || "false_positive".equals(lowerState)) {
+            return FALSE_POSITIVE;
         }
         // fallback
         return OPEN;

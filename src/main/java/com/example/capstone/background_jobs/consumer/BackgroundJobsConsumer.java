@@ -1,10 +1,10 @@
 package com.example.capstone.background_jobs.consumer;
 
 import com.example.capstone.background_jobs.dto.CreateTicketRequestEvent;
+import com.example.capstone.background_jobs.dto.NewScanRunbookEvent;
 import com.example.capstone.background_jobs.dto.TransitionTicketRequestEvent;
 import com.example.capstone.background_jobs.dto.UpdateAlertEvent;
 import com.example.capstone.background_jobs.model.EventTypes;
-import com.example.capstone.background_jobs.model.TransitionTicketRequestPayload;
 import com.example.capstone.background_jobs.service.BackgroundJobService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -30,6 +30,7 @@ public class BackgroundJobsConsumer {
                 case UPDATE_FINDING -> handleUpdateFinding(message);
                 case CREATE_TICKET -> handleCreateTicket(message);
                 case TRANSITION_TICKET -> handleTransitionTicket(message);
+                case NEW_SCAN -> handleNewScan(message);
                 default -> {
                     System.out.println("[JFC] Unknown event type => " + eventType);
                 }
@@ -66,6 +67,15 @@ public class BackgroundJobsConsumer {
         try {
             TransitionTicketRequestEvent event = objectMapper.readValue(message, TransitionTicketRequestEvent.class);
             jobService.handleTransitionTicket(event);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void handleNewScan(String message) throws Exception {
+        try{
+            NewScanRunbookEvent event = objectMapper.readValue(message, NewScanRunbookEvent.class);
+            jobService.handleNewScan(event);
         } catch (Exception e) {
             e.printStackTrace();
         }

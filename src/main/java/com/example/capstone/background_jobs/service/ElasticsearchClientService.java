@@ -1,6 +1,7 @@
 package com.example.capstone.background_jobs.service;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
+import co.elastic.clients.elasticsearch._types.Conflicts;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.core.UpdateByQueryResponse;
 import co.elastic.clients.elasticsearch.core.UpdateRequest;
@@ -26,21 +27,13 @@ public class ElasticsearchClientService {
         this.tenantRepository = tenantRepository;
     }
 
-    /**
-     * Update the 'state' field for documents matching the given 'alertNumber' in 'esIndex'.
-     * This uses an UpdateByQuery approach with a painless script:
-     *   ctx._source.state = params.newState
-     *
-     * @param esIndex     The Elasticsearch index (e.g. "tenant-1")
-     * @param alertNumber The unique alertNumber to match on
-     * @param newState    e.g. "OPEN", "DISMISS", "RESOLVE", etc.
-     */
     public void updateFindingInEs(String esIndex, long alertNumber, String newState) throws IOException {
         UpdateByQueryResponse response = esClient.updateByQuery(r -> r
                 .index(esIndex)
+                .conflicts(Conflicts.Proceed)
                 .query(q -> q
                         .term(t -> t
-                                .field("alertNumber")
+                                .field("alertNumber.keyword")
                                 .value(alertNumber)
                         )
                 )
@@ -57,14 +50,27 @@ public class ElasticsearchClientService {
         if (!response.failures().isEmpty()) {
             throw new RuntimeException("ES update failures => " + response.failures());
         }
-
-
     }
 
-    public Optional<String> findFindingIdByAlertNumber(String esIndex, long alertNumber) throws IOException {
+    public Optional<String> findFindingIdByAlertNumber(String esIndex, long alertNumber, String toolType) throws IOException {
         SearchResponse<Findings> searchResponse = esClient.search(s -> s
                         .index(esIndex)
-                        .query(q -> q.term(t -> t.field("alertNumber").value(alertNumber))),
+                        .query(q -> q
+                                .bool(b -> b
+                                        .must(m1 -> m1
+                                                .term(t -> t
+                                                        .field("alertNumber.keyword")
+                                                        .value(alertNumber)
+                                                )
+                                        )
+                                        .must(m2 -> m2
+                                                .term(t -> t
+                                                        .field("toolType.keyword")
+                                                        .value(toolType)  // exact match on tool type
+                                                )
+                                        )
+                                )
+                        ),
                 Findings.class
         );
 
@@ -99,7 +105,7 @@ public class ElasticsearchClientService {
             // 3. Construct the UpdateRequest for a partial update
             UpdateRequest<Map<String, Object>, Map<String, Object>> updateReq =
                     UpdateRequest.of(u -> u
-                            .index(esIndex)    // the index for this tenant
+                            .index(esIndex)
                             .id(findingId)     // the doc ID (i.e., the existing finding's _id)
                             .doc(partialDoc)   // only updating ticketId
                     );
@@ -112,6 +118,45 @@ public class ElasticsearchClientService {
         } catch (IOException e) {
             e.printStackTrace();
             throw new RuntimeException("Failed to update ticketId in Elasticsearch", e);
+        }
+    }
+
+    public List<Findings> fetchFindingsByIds(Long tenantId, List<String> docIds) {
+        if (docIds == null || docIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        // 1) Determine the tenant’s Elasticsearch index
+        TenantEntity tenant = tenantRepository.findById(tenantId)
+                .orElseThrow(() -> new IllegalStateException("No tenant found with id=" + tenantId));
+        String esIndex = tenant.getEsIndex();
+        if (esIndex == null || esIndex.isBlank()) {
+            throw new IllegalStateException("Tenant " + tenantId + " has no valid esIndex set.");
+        }
+
+        try {
+            // 2) Search by doc IDs (the actual _id in Elasticsearch)
+            // The .ids(...) query is a convenient way to do an “_id in [list]” search.
+            SearchResponse<Findings> response = esClient.search(
+                    s -> s.index(esIndex)
+                            .size(docIds.size())
+                            .query(q -> q.ids(i -> i.values(docIds))),
+                    Findings.class
+            );
+
+            // 3) Collect the sources
+            List<Findings> results = new ArrayList<>();
+            for (Hit<Findings> hit : response.hits().hits()) {
+                Findings found = hit.source();
+                if (found != null) {
+                    results.add(found);
+                }
+            }
+            return results;
+
+        } catch (IOException e) {
+            e.printStackTrace();
+            throw new RuntimeException("Failed to fetch findings by IDs from Elasticsearch", e);
         }
     }
 }
